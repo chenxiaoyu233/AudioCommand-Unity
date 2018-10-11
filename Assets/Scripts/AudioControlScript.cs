@@ -39,40 +39,22 @@ public class AudioControlScript : MonoBehaviour {
 		//SavWav.SavWav.Save("/Users/chenxiaoyu/Desktop/newWav", clip);
 	}
 	
-	void handleButton() {
-		if (Input.GetMouseButton(0)) {
-			if(!isRecording) {
-				clip = Microphone.Start(curDevice, false, 4, 16000); 
-				hasRecorded = true;
-			}
-		}
-	}
-
-	void handleFinishRecord() {
-		if (!isRecording && hasRecorded) {
-			hasRecorded = false;
-			audioController.InstructionAsync(clip);
-		}
-	}
-
 	// Update is called once per frame
 	void Update () {
-		/* for debug
-		if (!hasAccess) return; 
-		handleButton();
-		handleFinishRecord();
-		*/
 		if (Input.GetMouseButton(0)) {
 			if (!hasRecorded) {
 				hasRecorded = true;
 				clip = Microphone.Start(curDevice, false, 1000, 16000);
-				//audioController.InstructionAsync(clip);
+				audioController.InstructionAsync(clip, curDevice);
 			}
+			audioController.MainThreadSyncDataWithCilp();
 			//Debug.Log("Pressed primary button."); // check if pressed the button
+			//Debug.Log(Microphone.GetPosition(curDevice));
 		} else {
 			Microphone.End(curDevice);
 			if (hasRecorded) {
-				audioController.InstructionAsync(clip);
+				//audioController.InstructionAsync(clip);
+				audioController.isRec = false;
 				hasRecorded = false;
 			}
 		}
