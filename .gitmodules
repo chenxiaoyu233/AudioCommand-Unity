@@ -1,0 +1,3 @@
+[submodule "Assets/Plugins/audio-recognize"]
+	path = Assets/Plugins/audio-recognize
+	url = https://github.com/chenxiaoyu233/audio-recognize
