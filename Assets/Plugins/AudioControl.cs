@@ -132,7 +132,7 @@ namespace AudioControl
     }
 
     public class AudioController {
-        ArrayList samples;
+        public ArrayList samples;
         public static int frameLength = 10; // 10ms per frame
         public Thread NNThread;
         AudioClip clip;
@@ -164,7 +164,9 @@ namespace AudioControl
                 lastPosition = curPosition;
                 //Debug.Log(isRec);
                 Debug.Log("pos: " + lastPosition);
+                Loger.Log("pos: " + lastPosition);
                 Debug.Log("cnt: " + samples.Count);
+                Loger.Log("cnt: " + samples.Count);
         }
 
         bool syncDataWithClip() {
@@ -180,6 +182,7 @@ namespace AudioControl
 
             if (samples.Count < 15 * 16) {
                 Debug.Log("do not have enough info, exit");
+                Loger.Log("do not have enough info, exit");
                 return;
             }
 
@@ -201,6 +204,7 @@ namespace AudioControl
 
             // for debug
             Debug.Log("Done");
+            Loger.Log("Done");
         }
         void instruction(int begin, int end, bool needPredict) { // [begin, end)
             int len = end - begin;
@@ -214,8 +218,10 @@ namespace AudioControl
                 int ret = PosteriorHandler.Predict();
                 double conf = PosteriorHandler.CalcConfident();
                 Debug.Log(ret + " <- " + conf); // for test
+                Loger.Log(ret + " <- " + conf); // for test
                 if (conf >= 0.3) {
                     Debug.LogError(ret);
+                    Loger.LogError(ret);
                     PredictPool.AddPredict(ret);
                 }
             }
@@ -261,4 +267,20 @@ namespace AudioControl
 
     }
 
+    public class Loger {
+        public static string buffer;
+        public static void Log(object log) {
+            buffer += "\n";
+            buffer += log;
+        }
+
+        public static void LogError(object log) {
+            buffer += "\n";
+            buffer += log;
+        }
+
+        public static void Init() {
+            buffer = "";
+        }
+    }
 }

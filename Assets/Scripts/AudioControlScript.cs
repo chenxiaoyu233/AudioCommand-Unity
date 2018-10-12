@@ -17,6 +17,8 @@ public class AudioControlScript : MonoBehaviour {
 	AudioController audioController = new AudioController();
 	public Text Processing;
 	public Text Recording;
+	public Text MyLog;
+	public Scrollbar InputLen;
 
 	IEnumerator askForMicrophone() {
 		yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
@@ -36,6 +38,7 @@ public class AudioControlScript : MonoBehaviour {
 		askForMicrophone();
 		setDevice();
 		audioController.Init();
+		Loger.Init();
 
 		// Debug
 		//audioController.InstructionAsync(clip);
@@ -66,10 +69,22 @@ public class AudioControlScript : MonoBehaviour {
 				Recording.text = "Recording: off";
 			}
 		}
+
+		// update the UI
 		if (audioController.NNThread != null && audioController.NNThread.IsAlive) {
 			Processing.text = "Processing: on";
 		} else {
 			Processing.text = "Processing: off";
+		}
+
+		// update the Log
+		MyLog.text = Loger.buffer;
+
+		// update the InputLen(scollbar)
+		if (audioController.samples == null) {
+			InputLen.size = 0;
+		} else {
+			InputLen.size = (float)audioController.samples.Count / 50000;
 		}
 	}
 }
