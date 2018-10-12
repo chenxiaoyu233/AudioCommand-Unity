@@ -1,11 +1,13 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 public class SignalTranslater : MonoBehaviour {
 	public string[] signal;
 	public GameObject[] prefabs;
 	Queue <GameObject> que = new Queue<GameObject>();
+	public Text UIText;
 	void Start() {
 		signal = new string[AudioControl.PosteriorHandler.caseNumber];
 		signal[0] = "four";
@@ -19,6 +21,7 @@ public class SignalTranslater : MonoBehaviour {
 		signal[8] = "go";
 		signal[9] = "eight";
 		que.Clear();
+		UIText.text = "|";
 	}
 	void Update() {
 		int[] sig = AudioControl.PredictPool.GetArray();
@@ -35,6 +38,10 @@ public class SignalTranslater : MonoBehaviour {
 					Instantiate(prefabs[sig[i]], new Vector3(i * 5, 0, 0), new Quaternion(0, 0, 0, 0))
 				);
 			}
+		}
+		UIText.text = "|";
+		for (int i = 0; i < sig.Length; i++) {
+			UIText.text += signal[sig[i]] + "|";
 		}
 	}
 }
