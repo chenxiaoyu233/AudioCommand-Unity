@@ -48,6 +48,7 @@ public class AudioControlScript : MonoBehaviour {
 			if (!hasRecorded && (audioController.NNThread == null || !audioController.NNThread.IsAlive)) {
 				hasRecorded = true;
 				Recording.text = "Recording: on";
+				audioController.isRec = true;
 				clip = Microphone.Start(curDevice, false, 1000, 16000);
 				audioController.InstructionAsync(clip, curDevice);
 			}

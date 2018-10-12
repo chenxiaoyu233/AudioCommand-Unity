@@ -10,31 +10,31 @@ namespace AudioControl
 {
 
     public class CXYNN {
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void InitCXYNN();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static int Predict();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static int testCS();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void InitMfcc(int len);
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void SetValue(int idx, Int16 val);
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void AddFrame();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void SetPrev(int idx, Int16 val);
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void calcProb();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static double readProb(int idx);
     }
 
