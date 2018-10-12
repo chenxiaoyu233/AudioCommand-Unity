@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using AudioControl;
 using SavWav;
+using UnityEngine.UI;
 
 public class AudioControlScript : MonoBehaviour {
 
@@ -14,6 +15,8 @@ public class AudioControlScript : MonoBehaviour {
 	public bool hasRecorded = false; // 之前是否发起过录制
 	public AudioClip clip;
 	AudioController audioController = new AudioController();
+	public Text Processing;
+	public Text Recording;
 
 	IEnumerator askForMicrophone() {
 		yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
@@ -42,8 +45,9 @@ public class AudioControlScript : MonoBehaviour {
 	// Update is called once per frame
 	void Update () {
 		if (Input.GetMouseButton(0)) {
-			if (!hasRecorded) {
+			if (!hasRecorded && (audioController.NNThread == null || !audioController.NNThread.IsAlive)) {
 				hasRecorded = true;
+				Recording.text = "Recording: on";
 				clip = Microphone.Start(curDevice, false, 1000, 16000);
 				audioController.InstructionAsync(clip, curDevice);
 			}
@@ -51,12 +55,20 @@ public class AudioControlScript : MonoBehaviour {
 			//Debug.Log("Pressed primary button."); // check if pressed the button
 			//Debug.Log(Microphone.GetPosition(curDevice));
 		} else {
-			Microphone.End(curDevice);
+			if (Microphone.IsRecording(curDevice)) {
+				Microphone.End(curDevice);
+			}
 			if (hasRecorded) {
 				//audioController.InstructionAsync(clip);
 				audioController.isRec = false;
 				hasRecorded = false;
+				Recording.text = "Recording: off";
 			}
+		}
+		if (audioController.NNThread != null && audioController.NNThread.IsAlive) {
+			Processing.text = "Processing: on";
+		} else {
+			Processing.text = "Processing: off";
 		}
 	}
 }
