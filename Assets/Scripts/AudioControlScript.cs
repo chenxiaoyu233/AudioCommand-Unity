@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using UnityEngine;
 using AudioControl;
 using SavWav;
+using UnityEngine.UI;
 
 public class AudioControlScript : MonoBehaviour {
 
@@ -14,6 +15,10 @@ public class AudioControlScript : MonoBehaviour {
 	public bool hasRecorded = false; // 之前是否发起过录制
 	public AudioClip clip;
 	AudioController audioController = new AudioController();
+	public Text Processing;
+	public Text Recording;
+	public Text MyLog;
+	public Scrollbar InputLen;
 
 	IEnumerator askForMicrophone() {
 		yield return Application.RequestUserAuthorization(UserAuthorization.Microphone);
@@ -33,48 +38,53 @@ public class AudioControlScript : MonoBehaviour {
 		askForMicrophone();
 		setDevice();
 		audioController.Init();
+		Loger.Init();
 
 		// Debug
 		//audioController.InstructionAsync(clip);
 		//SavWav.SavWav.Save("/Users/chenxiaoyu/Desktop/newWav", clip);
 	}
 	
-	void handleButton() {
-		if (Input.GetMouseButton(0)) {
-			if(!isRecording) {
-				clip = Microphone.Start(curDevice, false, 4, 16000); 
-				hasRecorded = true;
-			}
-		}
-	}
-
-	void handleFinishRecord() {
-		if (!isRecording && hasRecorded) {
-			hasRecorded = false;
-			audioController.InstructionAsync(clip);
-		}
-	}
-
 	// Update is called once per frame
 	void Update () {
-		/* for debug
-		if (!hasAccess) return; 
-		handleButton();
-		handleFinishRecord();
-		*/
 		if (Input.GetMouseButton(0)) {
-			if (!hasRecorded) {
+			if (!hasRecorded && (audioController.NNThread == null || !audioController.NNThread.IsAlive)) {
 				hasRecorded = true;
+				Recording.text = "Recording: on";
+				audioController.isRec = true;
 				clip = Microphone.Start(curDevice, false, 1000, 16000);
-				//audioController.InstructionAsync(clip);
+				audioController.InstructionAsync(clip, curDevice);
 			}
+			audioController.MainThreadSyncDataWithCilp();
 			//Debug.Log("Pressed primary button."); // check if pressed the button
+			//Debug.Log(Microphone.GetPosition(curDevice));
 		} else {
-			Microphone.End(curDevice);
-			if (hasRecorded) {
-				audioController.InstructionAsync(clip);
-				hasRecorded = false;
+			if (Microphone.IsRecording(curDevice)) {
+				Microphone.End(curDevice);
 			}
+			if (hasRecorded) {
+				//audioController.InstructionAsync(clip);
+				audioController.isRec = false;
+				hasRecorded = false;
+				Recording.text = "Recording: off";
+			}
+		}
+
+		// update the UI
+		if (audioController.NNThread != null && audioController.NNThread.IsAlive) {
+			Processing.text = "Processing: on";
+		} else {
+			Processing.text = "Processing: off";
+		}
+
+		// update the Log
+		MyLog.text = Loger.buffer;
+
+		// update the InputLen(scollbar)
+		if (audioController.samples == null) {
+			InputLen.size = 0;
+		} else {
+			InputLen.size = (float)audioController.samples.Count / 50000;
 		}
 	}
 }

@@ -10,50 +10,60 @@ namespace AudioControl
 {
 
     public class CXYNN {
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void InitCXYNN();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static int Predict();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static int testCS();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void InitMfcc(int len);
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void SetValue(int idx, Int16 val);
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void AddFrame();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void SetPrev(int idx, Int16 val);
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static void calcProb();
 
-        [DllImport("Assets/Plugins/audio-recognize/libAudio.dylib")]
+        [DllImport("Audio")]
         public extern static double readProb(int idx);
     }
 
     //在C#侧完成一些辅助工作
     public class AudioAux {
+
         // 将AudioClip中存储的-1.0f ~ 1.0f 之间的浮点数, 转换为计算MFCC时需要的Int16
-        static public Int16[] ConvertToInt16(AudioClip clip) {
+        // @param AudioClip clip
+        // @param ArrayList buffer, 输出容器
+        // @param int start, 开始偏移位置
+        // @param int end, 结束偏移位置
+        // 注意: [start, end)
+        static public void ConvertToInt16(AudioClip clip, ArrayList buffer, int start, int end) {
+            int len = end - start;
             float[] samples = new float[clip.samples];
-            clip.GetData(samples, 0);
-            Int16[] intData = new Int16[clip.samples];
+            clip.GetData(samples, start);
+            Int16 intData;
 
             int rescaleFactor = 32767; //to convert float to Int16
 
-            for (int i = 0; i < samples.Length; i++) {
-                intData[i] = (short)(samples[i] * rescaleFactor);
+            for (int i = 0; i < len; i++) {
+                intData = (short)(samples[i] * rescaleFactor);
+                if (intData >= 100 || intData <= -100) // 过滤声音很小的部分 (待调整)
+                    buffer.Add(intData);
             }
-
-            return intData;
         }
+
+
+
     }
 
     public class PosteriorHandler {
@@ -114,67 +124,92 @@ namespace AudioControl
             for (int i = 0; i < caseNumber; i++) ret = Math.Max(ret, curFame[i]);
             return ret;
         }
+
+        public static void Init() {
+            smoothWindow.Clear();
+            confidentWindow.Clear();
+        }
     }
 
     public class AudioController {
-        private bool isAddPrevSamples;
-        private Int16[] samples;
-        public static int frameLength {
-            get { return 10; } // 10ms per frame
-        }
-        string LogString;
-        Thread NNThread;
-
+        public ArrayList samples;
+        public static int frameLength = 10; // 10ms per frame
+        public Thread NNThread;
         AudioClip clip;
+        string curDevice;
+        int lastPosition; // 本次读取clip中数据开始的位置
 
-        int sampleLen;
-        int clipLen;
-
-        public void InstructionAsync(AudioClip _clip) {
+        // 异步语音识别
+        // @param AudioClip _clip, 录音片段的引用
+        // @param string _curDevice, 目标录音设备
+        public void InstructionAsync(AudioClip _clip, string _curDevice) {
             clip = _clip;
-            samples = AudioAux.ConvertToInt16(clip);
-            clipLen = (int)clip.length;
-            sampleLen = samples.Length;
+            curDevice = _curDevice;
+            samples = new ArrayList(); samples.Clear(); // 初始化samples
+            lastPosition = 0;
+            PosteriorHandler.Init();
             NNThread = new Thread(new ThreadStart(Instruction));
             NNThread.Start();
-            //Instruction();
         }
 
-        //预处理sample
-        void prework() {
-            int len = 0;
-            bool flag = false;
-            for (int i = 0; i < sampleLen; i++) {
-                if (flag || samples[i] >= 1000 || samples[i] <= -1000) {
-                    samples[len++] = samples[i];
-                    flag = true;
-                }
-            }
-            sampleLen = len;
-            while (sampleLen > 0 && samples[sampleLen-1] > -1000 && samples[sampleLen-1] < 1000) sampleLen--;
-            Debug.Log(sampleLen);
+        // 和clip同步当前的数据
+        // @ret 能否继续读取clip
+        public bool isRec;
+        public void MainThreadSyncDataWithCilp() {
+                isRec = Microphone.IsRecording(curDevice);
+                if (!isRec) return;
+
+                int curPosition = Microphone.GetPosition(curDevice);
+                AudioAux.ConvertToInt16(clip, samples, lastPosition, curPosition);
+                lastPosition = curPosition;
+                //Debug.Log(isRec);
+                Debug.Log("pos: " + lastPosition);
+                Loger.Log("pos: " + lastPosition);
+                Debug.Log("cnt: " + samples.Count);
+                Loger.Log("cnt: " + samples.Count);
+        }
+
+        bool syncDataWithClip() {
+            return isRec;
         }
 
         void Instruction() {
+            // 计算每一帧所包含的sample的数量
             int bufferLen = frameLength * 16000 / 1000;
-            prework();
-            for (int i = 0; i < 15 * 16; i++) {
-                CXYNN.SetPrev(i, samples[i]);
+
+            // 等待输入足够的音频片段
+            while(samples.Count < 15 * 16 && syncDataWithClip()) {}
+
+            if (samples.Count < 15 * 16) {
+                Debug.Log("do not have enough info, exit");
+                Loger.Log("do not have enough info, exit");
+                return;
             }
+
+            // Mfcc 填充 <= 我们使用的Mfcc代码中需要预先进行填充, 以保证最初的几帧得到的数据是有效的
+            for (int i = 0; i < 15 * 16; i++) {
+                CXYNN.SetPrev(i, (Int16)samples[i]);
+            }
+
+            // 识别过程
             int cnt = 0;
             int cutFlag = 0;
-            for (int i = 15 * 16; i < sampleLen; i += bufferLen) {
-                if( i + bufferLen > sampleLen) break;
+            for (int i = 15 * 16; syncDataWithClip() || i + bufferLen - 1 < samples.Count; ) {
+                if (i + bufferLen > samples.Count) continue;
                 cnt += 1;
                 instruction(i, i + bufferLen, cnt >= 30 && cutFlag % 3 == 0);
+                i += bufferLen;
                 cutFlag ++;
             }
+
+            // for debug
             Debug.Log("Done");
+            Loger.Log("Done");
         }
         void instruction(int begin, int end, bool needPredict) { // [begin, end)
             int len = end - begin;
             for(int i = 0; i < len; i++) {
-                CXYNN.SetValue(i, samples[begin + i]);
+                CXYNN.SetValue(i, (Int16) samples[begin + i]);
             }
             CXYNN.AddFrame();
 
@@ -183,8 +218,10 @@ namespace AudioControl
                 int ret = PosteriorHandler.Predict();
                 double conf = PosteriorHandler.CalcConfident();
                 Debug.Log(ret + " <- " + conf); // for test
+                Loger.Log(ret + " <- " + conf); // for test
                 if (conf >= 0.3) {
                     Debug.LogError(ret);
+                    Loger.LogError(ret);
                     PredictPool.AddPredict(ret);
                 }
             }
@@ -230,4 +267,20 @@ namespace AudioControl
 
     }
 
+    public class Loger {
+        public static string buffer;
+        public static void Log(object log) {
+            buffer += "\n";
+            buffer += log;
+        }
+
+        public static void LogError(object log) {
+            buffer += "\n";
+            buffer += log;
+        }
+
+        public static void Init() {
+            buffer = "";
+        }
+    }
 }
