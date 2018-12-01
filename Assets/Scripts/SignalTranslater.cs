@@ -35,7 +35,7 @@ public class SignalTranslater : MonoBehaviour {
 				break;
 			} else {
 				que.Enqueue(
-					Instantiate(prefabs[sig[i]], new Vector3(i * 5, 0, 0), new Quaternion(0, 0, 0, 0))
+					Instantiate(prefabs[sig[i]], new Vector3(i * 3 - 6, 0, 0), new Quaternion(0, 0, 0, 0))
 				);
 			}
 		}

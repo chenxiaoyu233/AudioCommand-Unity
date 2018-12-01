@@ -17,7 +17,7 @@ public class AudioControlScript : MonoBehaviour {
 	AudioController audioController = new AudioController();
 	public Text Processing;
 	public Text Recording;
-	public Text MyLog;
+	public GameObject MyLog;
 	public Scrollbar InputLen;
 
 	IEnumerator askForMicrophone() {
@@ -78,7 +78,8 @@ public class AudioControlScript : MonoBehaviour {
 		}
 
 		// update the Log
-		MyLog.text = Loger.buffer;
+		MyLog.GetComponent<Text>().text = Loger.buffer;
+		MyLog.GetComponent<RectTransform>().sizeDelta = new Vector2(0, 20 * Loger.lineNum);
 
 		// update the InputLen(scollbar)
 		if (audioController.samples == null) {

@@ -269,18 +269,22 @@ namespace AudioControl
 
     public class Loger {
         public static string buffer;
+        public static int lineNum;
         public static void Log(object log) {
             buffer += "\n";
             buffer += log;
+            ++lineNum;
         }
 
         public static void LogError(object log) {
             buffer += "\n";
             buffer += log;
+            ++lineNum;
         }
 
         public static void Init() {
             buffer = "";
+            lineNum = 0;
         }
     }
 }
